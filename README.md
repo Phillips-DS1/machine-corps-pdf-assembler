@@ -7,3 +7,9 @@
 - Dynamic reordering: Drag-drop files in list to change PDF order.
 - Tables: Insert via toolbar; rendered with custom styles.
 - Build tab: Final options for PDF generation.
+
+## Post-Merge Cleanup
+After merging 14 PRs (some out of order), this project has been refactored for consistency:
+- Consolidated workflow fixes in grok-analysis.yml.
+- Added documentation in key source files.
+- No functional changes—run tests to verify.
