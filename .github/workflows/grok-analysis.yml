@@ -1,1 +1,98 @@
-# [The full YAML from the last iteration, including your example line, fallback, configs, and enhancements - omitted for brevity]
+name: Grok Code Review
+
+on:
+  pull_request:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 3  # For shallow clones and initial commits
+
+    - name: Verify checkout
+      run: |
+        if [ ! -f README.md ] || ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+          echo "Checkout or history verification failed - repository may be empty or access denied."
+          exit 1
+        fi
+
+    - name: Fetch base branch
+      run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} || echo "Base branch fetch failed - proceeding with available history"
+
+    - name: Install Python tools
+      run: pip install openai  # Use OpenAI SDK for xAI compatibility (switched from xai-sdk to resolve AttributeError)
+
+    - name: Generate Grok review
+      id: generate-review
+      env:
+        GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
+        MODEL_NAME: 'grok-beta'  # Configurable model
+        BASE_URL: 'https://api.x.ai/v1'  # Configurable base URL
+        MAX_TOKENS: 500
+        TEMPERATURE: 0.7
+      run: |
+        python - <<EOF
+        import os
+        import subprocess
+        from openai import OpenAI
+
+        api_key = os.getenv("GROK_API_KEY")
+        model = os.getenv("MODEL_NAME", "grok-beta")
+        base_url = os.getenv("BASE_URL", "https://api.x.ai/v1")
+        max_tokens = int(os.getenv("MAX_TOKENS", 500))
+        temperature = float(os.getenv("TEMPERATURE", 0.7))
+        if not api_key:
+            review = "Error: GROK_API_KEY secret is not set in repository settings. Please add it for code reviews."
+        else:
+            client = OpenAI(base_url=base_url, api_key=api_key)
+            commit_count = int(subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip())
+            try:
+                if commit_count <= 1:
+                    empty_tree = subprocess.check_output(['git', 'hash-object', '-t', 'tree', '/dev/null']).decode('utf-8').strip()
+                    diff = subprocess.check_output(['git', 'diff', empty_tree]).decode('utf-8')
+                else:
+                    diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+            except subprocess.CalledProcessError as e:
+                print(f"Diff failed: {str(e)} - falling back.")  # Logging for failures
+                try:
+                    diff = subprocess.check_output(['git', 'diff', '${{ github.base_ref }}']).decode('utf-8')
+                except subprocess.CalledProcessError as e2:
+                    print(f"Fallback diff failed: {str(e2)}")
+                    diff = "No previous commits available - reviewing current state."
+            if not diff.strip():
+                diff = "No changes detected."
+
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=[{
+                        "role": "user",
+                        "content": f"Please review these code changes and suggest improvements:\n\n{diff}"
+                    }],
+                    max_tokens=max_tokens,
+                    temperature=temperature
+                )
+                review = response.choices[0].message.content
+            except Exception as e:
+                review = f"API call failed: {str(e)}. Check API key, network, or model availability."
+
+        with open('grok_review.md', 'w') as f:
+            f.write("### Grok Code Review\n" + review)
+        EOF
+
+    - name: Post review as PR comment
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const review = fs.readFileSync('grok_review.md', 'utf8');
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: review
+          });
