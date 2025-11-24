@@ -11,12 +11,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 3  # Increased to 3 for deeper history in case of complex diffs
+        fetch-depth: 0  # Fetch full history to ensure git diff works in all cases
 
     - name: Verify checkout
       run: |
-        if [ ! -f README.md ] || ! git rev-parse HEAD~1 >/dev/null 2>&1; then
-          echo "Checkout or history verification failed - repository may be empty or access denied."
+        if [ ! -f README.md ]; then  # Check for a known file
+          echo "Checkout failed - repository may be empty or access denied."
           exit 1
         fi
 
@@ -36,39 +36,26 @@ jobs:
         import subprocess
         from xai_sdk import Client
 
-        api_key = os.getenv("GROK_API_KEY")
-        if not api_key:
-            review = "Error: GROK_API_KEY secret is not set in repository settings. Please add it for code reviews."
-        else:
-            # Check commit count to handle initial commits
-            commit_count = int(subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip())
+        client = Client(api_key=os.getenv("GROK_API_KEY"))
+        try:
+            diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+        except subprocess.CalledProcessError:
             try:
-                if commit_count <= 1:
-                    # Diff against empty tree for initial commit
-                    empty_tree = subprocess.check_output(['git', 'hash-object', '-t', 'tree', '/dev/null']).decode('utf-8').strip()
-                    diff = subprocess.check_output(['git', 'diff', empty_tree]).decode('utf-8')
-                else:
-                    diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+                diff = subprocess.check_output(['git', 'diff', 'origin/main']).decode('utf-8')
             except subprocess.CalledProcessError:
-                try:
-                    diff = subprocess.check_output(['git', 'diff', '${{ github.base_ref }}']).decode('utf-8')
-                except subprocess.CalledProcessError:
-                    diff = "No previous commits available (possibly initial commit or shallow clone) - reviewing the current state of the branch. For better reviews, ensure multiple commits or deeper fetch."
-            if not diff.strip():
-                diff = "No changes detected - please verify the pull request has code differences."
+                diff = "No previous commits available - reviewing the entire current state of the branch. Consider adding more commits for better diff analysis or check repository history."
+        if not diff.strip():
+            diff = "No changes detected - please verify the pull request has code differences."
 
-            client = Client(api_key=api_key)
-            response = client.chat.completions.create(
-                model="grok-4",
-                messages=[{
-                    "role": "user",
-                    "content": f"Please review these code changes and suggest improvements:\n\n{diff}"
-                }]
-            )
-            review = response.choices[0].message.content
-
-        with open('grok_review.md', 'w') as f:
-            f.write("### Grok Code Review\n" + review)
+        response = client.chat.completions.create(
+            model="grok-4",
+            messages=[{
+                "role": "user",
+                "content": f"Please review these code changes and suggest improvements:\n\n{diff}"
+            }]
+        )
+        print("### Grok Code Review")
+        print(response.choices[0].message.content)
         EOF
 
     - name: Post review as PR comment
