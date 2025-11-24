@@ -11,7 +11,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2  # Set to 2 so HEAD~1 exists
+        fetch-depth: 0  # Fetch full history to ensure git diff works in all cases
 
     - name: Verify checkout
       run: |
