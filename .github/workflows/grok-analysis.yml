@@ -23,11 +23,6 @@ jobs:
     - name: Fetch base branch
       run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} || echo "Base branch fetch failed - proceeding with available history"
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'  # Reproducible version
-
     - name: Install Python tools
       run: pip install openai  # Use OpenAI SDK for xAI compatibility (switched from xai-sdk to resolve AttributeError)
 
