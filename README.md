@@ -1,5 +1,9 @@
+# Updated README.md
 # ... existing content ...
-## File Order Tab
-- Drag and drop files in the list to reorder.
-- Click 'Apply Order' to rename with prefixes (e.g., 01-file.md) and save the order for PDF building.
-- Use 'Undo' if needed; refreshes on input folder changes.
+## New Features
+- Image handling: Use [[image:placeholder]] in Markdown; app prompts for file selection and embeds.
+- Live editing: In Files tab, click a file for split-view editor/preview; changes auto-save.
+- Theme support: Switch between light/dark via dropdown in Main tab (e.g., app.set_theme('dark')).
+- Dynamic reordering: Drag-drop files in list to change PDF order.
+- Tables: Insert via toolbar; rendered with custom styles.
+- Build tab: Final options for PDF generation.
