@@ -1,29 +1,50 @@
-name: Grok Code Review               # This is just the name you will see
+name: Grok Code Review
 
-on:                                  # When should this run?
-  pull_request:                      # Every time a Pull Request is opened or updated
+on:
+  pull_request:
 
 jobs:
   review:
-    runs-on: ubuntu-latest           # GitHub will use a fresh Linux computer
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4      # Downloads your code so Grok can see it
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history to ensure git diff works in all cases
+
+    - name: Verify checkout
+      run: |
+        if [ ! -f README.md ]; then  # Check for a known file
+          echo "Checkout failed - repository may be empty or access denied."
+          exit 1
+        fi
+
+    - name: Fetch base branch
+      run: git fetch origin main:main || echo "Base branch fetch failed - proceeding with available history"
 
     - name: Install Python tools
-      run: pip install xai-sdk      # Installs the official xAI library
+      run: pip install xai-sdk
 
     - name: Ask Grok to review the changes
       env:
-        GROK_API_KEY: ${{ secrets.GROK_API_KEY }}   # Gets your secret key safely
+        GROK_API_KEY: ${{ secrets.GROK_API_KEY }}
       run: |
         python - <<EOF
         import os
+        import subprocess
         from xai_sdk import Client
 
         client = Client(api_key=os.getenv("GROK_API_KEY"))
-        diff = "$(git diff HEAD~1)"   # Gets the code changes
+        try:
+            diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+        except subprocess.CalledProcessError:
+            try:
+                diff = subprocess.check_output(['git', 'diff', 'origin/main']).decode('utf-8')
+            except subprocess.CalledProcessError:
+                diff = "No previous commits available - reviewing the entire current state of the branch. Consider adding more commits for better diff analysis or check repository history."
+        if not diff.strip():
+            diff = "No changes detected - please verify the pull request has code differences."
 
         response = client.chat.completions.create(
             model="grok-4",
