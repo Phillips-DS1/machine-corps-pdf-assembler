@@ -1,0 +1,57 @@
+@page {
+    size: Letter;
+    margin: 1in;
+    margin-top: 20pt;
+    margin-bottom: 20pt;
+}
+body { 
+    font-family: "Times New Roman", serif; 
+    font-size: 12pt; 
+    line-height: 1.5; 
+}
+h1, h2, h3, h4, h5, h6 { 
+    page-break-after: avoid; 
+    margin-top: 1em; 
+    margin-bottom: 0.5em; 
+}
+ul, ol { 
+    margin-top: 0.5em; 
+    margin-bottom: 0.5em; 
+    page-break-inside: avoid; 
+}
+p { 
+    margin-top: 0; 
+    margin-bottom: 0.5em; 
+    orphans: 3; 
+    widows: 3; 
+}
+
+/* Cover Styles */
+.cover-container {
+    background: #0b2545;
+    padding-top: 180pt;
+    color: white;
+    text-align: center;
+    height: 100vh;
+    page-break-after: always;
+}
+
+/* Running Header & Footer */
+#header { position: running(header); }
+#footer { position: running(footer); }
+
+@page {
+    @top-center    { content: element(header); }
+    @bottom-center { content: element(footer); }
+}
+
+/* Classification Banners - conditional block */
+@page {
+    @top-left { content: ""; background-color: red; color: white; text-align: center; font-weight: bold; padding: 5pt; font-size: 10pt; }
+    @bottom-left { content: ""; background-color: red; color: white; text-align: center; font-weight: bold; padding: 5pt; font-size: 10pt; }
+}
+
+/* Table of Contents */
+#toc h1 { page-break-before: always; }
+#toc ul { list-style: none; padding-left: 0; }
+#toc li { margin: 0.2em 0; }

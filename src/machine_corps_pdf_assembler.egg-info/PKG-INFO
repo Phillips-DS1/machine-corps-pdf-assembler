@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: machine-corps-pdf-assembler
+Version: 1.0.0
+Summary: Presidential Briefing Book PDF Assembler – Machine Corps Initiative
+Author: Colin Gilchrist (AI Architect: Grok 4)
+Requires-Python: >=3.12
+Requires-Dist: weasyprint==62.2
+Requires-Dist: cssutils==2.11.1
+Requires-Dist: mistune==3.0.2
+Requires-Dist: PyYAML==6.0.2
+Requires-Dist: PyQt6==6.7.0
+Requires-Dist: PyQt6-WebEngine==6.7.0
+Requires-Dist: pytest==8.3.3
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

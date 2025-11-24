@@ -1,0 +1,60 @@
+# Filename: config.yaml
+input_folder: inputs/
+output_file: machine_corps_policy_package.pdf
+classification: CUI // FOUO
+use_latex_fallback: false
+
+cover:
+  lines:
+    - text: THE MACHINE CORPS INITIATIVE
+      align: center
+      font: Times New Roman
+      size: 56
+      bold: true
+      italic: false
+    - text: COMPLETE POLICY PACKAGE
+      align: center
+      font: Times New Roman
+      size: 28
+      bold: false
+      italic: false
+    - text: January 20, 2026
+      align: center
+      font: Times New Roman
+      size: 18
+      bold: false
+      italic: false
+  bg_color: '#0b2545'
+  padding_top: 180
+
+header:
+  lines:
+    - text: The Machine Corps Initiative – Complete Policy Package
+      align: center
+      font: Times New Roman
+      size: 10
+      bold: false
+      italic: false
+  height: 20
+  color: '#000000'
+
+footer:
+  lines:
+    - text: Page {page}
+      align: center
+      font: Times New Roman
+      size: 10
+      bold: false
+      italic: false
+  height: 20
+  color: '#000000'
+
+static_strings:
+  app_title: Machine Corps PDF Assembler – Presidential Briefing Book Tool
+  status_ready: Ready – Load folder and click BUILD PDF
+  status_building: Building PDF...
+  status_complete: PDF build complete
+  error_invalid_folder: Invalid input folder
+  error_build_failed: Build failed
+  success_pdf_built: PDF built successfully!
+  confirm_open_pdf: Open the generated PDF now?
