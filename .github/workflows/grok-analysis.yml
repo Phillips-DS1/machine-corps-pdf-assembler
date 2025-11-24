@@ -11,25 +11,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 3  # For shallow clones and initial commits
+        fetch-depth: 0  # Fetch full history to ensure git diff works in all cases
 
     - name: Verify checkout
       run: |
-        if [ ! -f README.md ] || ! git rev-parse HEAD~1 >/dev/null 2>&1; then
-          echo "Checkout or history verification failed - repository may be empty or access denied."
+        if [ ! -f README.md ]; then  # Check for a known file
+          echo "Checkout failed - repository may be empty or access denied."
           exit 1
         fi
 
     - name: Fetch base branch
       run: git fetch origin ${{ github.base_ref }}:${{ github.base_ref }} || echo "Base branch fetch failed - proceeding with available history"
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'  # Reproducible version
-
     - name: Install Python tools
-      run: pip install openai  # Use OpenAI SDK for xAI compatibility
+      run: pip install xai-sdk
 
     - name: Generate Grok review
       id: generate-review
@@ -39,42 +34,28 @@ jobs:
         python - <<EOF
         import os
         import subprocess
-        from openai import OpenAI  # Updated import
+        from xai_sdk import Client
 
-        api_key = os.getenv("GROK_API_KEY")
-        if not api_key:
-            review = "Error: GROK_API_KEY secret is not set in repository settings. Please add it for code reviews."
-        else:
-            client = OpenAI(base_url="https://api.x.ai/v1", api_key=api_key)  # Correct xAI endpoint
-            commit_count = int(subprocess.check_output(['git', 'rev-list', '--count', 'HEAD']).decode('utf-8').strip())
+        client = Client(api_key=os.getenv("GROK_API_KEY"))
+        try:
+            diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+        except subprocess.CalledProcessError:
             try:
-                if commit_count <= 1:
-                    empty_tree = subprocess.check_output(['git', 'hash-object', '-t', 'tree', '/dev/null']).decode('utf-8').strip()
-                    diff = subprocess.check_output(['git', 'diff', empty_tree]).decode('utf-8')
-                else:
-                    diff = subprocess.check_output(['git', 'diff', 'HEAD~1']).decode('utf-8')
+                diff = subprocess.check_output(['git', 'diff', 'origin/main']).decode('utf-8')
             except subprocess.CalledProcessError:
-                try:
-                    diff = subprocess.check_output(['git', 'diff', '${{ github.base_ref }}']).decode('utf-8')
-                except subprocess.CalledProcessError:
-                    diff = "No previous commits available - reviewing current state."
-            if not diff.strip():
-                diff = "No changes detected."
+                diff = "No previous commits available - reviewing the entire current state of the branch. Consider adding more commits for better diff analysis or check repository history."
+        if not diff.strip():
+            diff = "No changes detected - please verify the pull request has code differences."
 
-            try:
-                response = client.chat.completions.create(
-                    model="grok-beta",  # Updated model name
-                    messages=[{
-                        "role": "user",
-                        "content": f"Please review these code changes and suggest improvements:\n\n{diff}"
-                    }]
-                )
-                review = response.choices[0].message.content
-            except Exception as e:
-                review = f"API call failed: {str(e)}. Check API key, network, or model availability."
-
-        with open('grok_review.md', 'w') as f:
-            f.write("### Grok Code Review\n" + review)
+        response = client.chat.completions.create(
+            model="grok-4",
+            messages=[{
+                "role": "user",
+                "content": f"Please review these code changes and suggest improvements:\n\n{diff}"
+            }]
+        )
+        print("### Grok Code Review")
+        print(response.choices[0].message.content)
         EOF
 
     - name: Post review as PR comment
